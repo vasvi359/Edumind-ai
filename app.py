@@ -441,7 +441,43 @@ def update_agent_status(agent_placeholder, active=None, done=[]):
     agent_placeholder.markdown(html, unsafe_allow_html=True)
 
 # ============================================
-# 6. SIDEBAR
+# 6. PROCESS QUERY & FILE (MOVED UP FOR INSTANT UI UPDATES)
+# ============================================
+prompt = st.chat_input("Message EduMind AI...", accept_file=True, file_type=["pdf", "docx"])
+
+if prompt:
+    sid = st.session_state.current_session_id
+    session = st.session_state.sessions[sid]
+
+    # Handle file upload if any
+    if prompt.files:
+        uploaded_file = prompt.files[0]
+        if session.get("processed_file") != uploaded_file.name:
+            with st.spinner("Processing through RAG pipeline..."):
+                text = extract_text(uploaded_file)
+                vectorstore, num_chunks = create_vectorstore(text)
+                session["processed_file"] = uploaded_file.name
+                session["vectorstore"] = vectorstore
+                session["num_chunks"] = num_chunks
+            # Small success toast then rerun to update the sidebar status
+            st.toast(f"RAG Ready — {num_chunks} chunks indexed", icon="✅")
+            st.rerun() 
+            
+    query = prompt.text
+    if query:
+        model_id = AVAILABLE_MODELS[st.session_state.selected_model]
+        if session["title"] == "New Chat":
+            llm_temp = ChatGroq(
+                model=model_id,
+                temperature=0.3,
+                api_key=os.environ.get("GROQ_API_KEY")
+            )
+            update_session_title(sid, query, llm=llm_temp)
+
+        session["chat"].append({"role": "user", "content": query})
+
+# ============================================
+# 7. SIDEBAR (LEFT)
 # ============================================
 with st.sidebar:
     st.markdown("""
@@ -456,9 +492,6 @@ with st.sidebar:
 
     st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
 
-    # (Chat history moved to right sidebar)
-
-    # Upload
     current_session = get_current_session()
 
     # RAG status
@@ -476,7 +509,6 @@ with st.sidebar:
     update_agent_status(agent_placeholder)
 
     # Memory
-    current_session = get_current_session()
     memory = current_session.get("memory", EduMindMemory())
     memory_status = memory.get_status()
     st.markdown("<div style='height:6px; border-top:1px solid #2d2d4a; margin-top:6px;'></div>", unsafe_allow_html=True)
@@ -501,43 +533,38 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ============================================
-# 8. RIGHT SIDEBAR (HISTORY)
+# 9. RIGHT SIDEBAR (HISTORY)
 # ============================================
 right_sidebar = st.container()
 with right_sidebar:
     st.markdown('<span class="right-sidebar-target"></span>', unsafe_allow_html=True)
     st.markdown("""<div style="font-size:1.05rem; font-weight:800; color:#a5b4fc; padding-bottom:12px; margin-bottom:8px; border-bottom:1px solid #2d2d4a;">Chat History</div>""", unsafe_allow_html=True)
     if st.session_state.sessions:
-        for sid in reversed(list(st.session_state.sessions.keys())):
-            session = st.session_state.sessions[sid]
-            title = session.get("title", "New Chat")
-            is_active = sid == st.session_state.current_session_id
-            label = f"{title}"
+        for sid_hist in reversed(list(st.session_state.sessions.keys())):
+            sess_hist = st.session_state.sessions[sid_hist]
+            hist_title = sess_hist.get("title", "New Chat")
+            is_active = sid_hist == st.session_state.current_session_id
             row_class = "session-row active-session" if is_active else "session-row"
             st.markdown(f'<div class="{row_class}">', unsafe_allow_html=True)
             col1, col2 = st.columns([0.88, 0.12])
             with col1:
-                if st.button(label, key=f"sess_{sid}", use_container_width=True):
-                    st.session_state.current_session_id = sid
+                if st.button(hist_title, key=f"sess_{sid_hist}", use_container_width=True):
+                    st.session_state.current_session_id = sid_hist
                     st.rerun()
             with col2:
-                if st.button("✕", key=f"del_{sid}", help="Delete Chat"):
-                    del st.session_state.sessions[sid]
-                    if st.session_state.current_session_id == sid:
+                if st.button("✕", key=f"del_{sid_hist}", help="Delete Chat"):
+                    del st.session_state.sessions[sid_hist]
+                    if st.session_state.current_session_id == sid_hist:
                         st.session_state.current_session_id = None
                     st.rerun()
             st.markdown('</div>', unsafe_allow_html=True)
 
 # ============================================
-# 9. CURRENT SESSION DATA
+# 10. LANDING PAGE & CHAT HISTORY
 # ============================================
 current_session = get_current_session()
 current_chat = current_session.get("chat", [])
-current_memory = current_session.get("memory", EduMindMemory())
 
-# ============================================
-# 10. LANDING PAGE
-# ============================================
 if not current_chat:
     st.markdown("""
     <div style="background:white; border:1px solid #e5e7eb; border-radius:14px; padding:24px; margin-bottom:1.5rem;">
@@ -548,15 +575,9 @@ if not current_chat:
             <div class="step-card"><div class="step-number">3</div><div style="font-weight:700; margin-bottom:3px; font-size:0.82rem;">Ask Questions</div><div style="color:#6B7280; font-size:0.75rem;">Ask or request exam prep</div></div>
             <div class="step-card"><div class="step-number">4</div><div style="font-weight:700; margin-bottom:3px; font-size:0.82rem;">Get Evaluated</div><div style="color:#6B7280; font-size:0.75rem;">Submit answers for scoring</div></div>
         </div>
-        <div style="margin-top:16px; background:#EEF2FF; border-radius:8px; padding:10px 14px; font-size:0.8rem; color:#4338ca;">
-            <b>Try:</b> "Generate 5 exam questions" &nbsp;•&nbsp; "Explain the main concepts" &nbsp;•&nbsp; "Grade my answer: [your answer]"
-        </div>
     </div>
     """, unsafe_allow_html=True)
 
-# ============================================
-# 11. CHAT HISTORY
-# ============================================
 for msg in current_chat:
     if msg["role"] == "user":
         st.markdown(f'<div class="user-message">{msg["content"]}</div>', unsafe_allow_html=True)
@@ -564,103 +585,45 @@ for msg in current_chat:
         st.markdown(f'<div class="ai-bubble"><div class="ai-icon">E</div><div class="ai-content">{msg["content"]}</div></div>', unsafe_allow_html=True)
 
 # ============================================
-# 12. MODEL SELECTOR ABOVE INPUT
+# 11. MODEL SELECTOR & AGENT EXECUTION
 # ============================================
 st.markdown('<div class="pull-down">', unsafe_allow_html=True)
-selected_model = st.selectbox(
+selected_model_ui = st.selectbox(
     "model",
     options=list(AVAILABLE_MODELS.keys()),
     index=list(AVAILABLE_MODELS.keys()).index(st.session_state.selected_model),
     label_visibility="collapsed",
     key="model_selector"
 )
-st.session_state.selected_model = selected_model
-model_id = AVAILABLE_MODELS[selected_model]
+st.session_state.selected_model = selected_model_ui
 st.markdown('</div>', unsafe_allow_html=True)
 
-prompt = st.chat_input("Message EduMind AI...", accept_file=True, file_type=["pdf", "docx"])
+# Process the assistant response if a new query was added
+if prompt and prompt.text:
+    model_id_exec = AVAILABLE_MODELS[st.session_state.selected_model]
+    query_exec = prompt.text
+    
+    with st.spinner("EduMind is thinking..."):
+        update_agent_status(agent_placeholder, active="Analyzer Agent")
+        llm = ChatGroq(model=model_id_exec, temperature=0.3, api_key=os.environ.get("GROQ_API_KEY"))
+        result = process_query(query_exec, current_session.get("vectorstore"), current_session["memory"], llm)
+        agents_used = result.get("agents_used", [])
+        update_agent_status(agent_placeholder, done=agents_used)
 
-# ============================================
-# 13. PROCESS QUERY & FILE
-# ============================================
-if prompt:
-    sid = st.session_state.current_session_id
-    session = st.session_state.sessions[sid]
+    intent = result.get("intent", "")
+    final_html = ""
+    if intent and intent not in ["GENERAL_CHAT", "NONE"]:
+        intent_colors = {"QUIZ": "#EEF2FF", "EVALUATE": "#ECFDF5", "EXPLAIN": "#FEF3C7"}
+        ic = intent_colors.get(intent, "#F9FAFB")
+        final_html += f"""<div style="background:{ic}; border-radius:5px; padding:3px 9px; margin-bottom:7px; font-size:0.65rem; color:#6B7280; font-weight:600;">Orchestrator: <b>{intent}</b> | {" → ".join(agents_used)}</div>"""
+    
+    if result.get("questions"):
+        final_html += f"""<div class="agent-output-box" style="border-left-color:#4338ca;"><div class="agent-output-label">Question Generator Agent</div><div style="white-space:pre-line; font-size:0.9rem;">{result['questions']}</div></div>"""
+    if result.get("answer"):
+        final_html += f"""<div class="agent-output-box" style="border-left-color:#059669;"><div class="agent-output-label" style="color:#059669;">EduMind AI</div><div style="white-space:pre-line; font-size:0.9rem;">{result['answer']}</div></div>"""
+    if result.get("evaluation"):
+        final_html += f"""<div class="agent-output-box" style="border-left-color:#d97706;"><div class="agent-output-label" style="color:#d97706;">Evaluator Agent</div><div style="white-space:pre-line; font-size:0.9rem;">{result['evaluation']}</div></div>"""
 
-    # Handle file upload if any
-    if prompt.files:
-        uploaded_file = prompt.files[0]
-        if session.get("processed_file") != uploaded_file.name:
-            with st.spinner("Processing through RAG pipeline..."):
-                text = extract_text(uploaded_file)
-                vectorstore, num_chunks = create_vectorstore(text)
-                session["processed_file"] = uploaded_file.name
-                session["vectorstore"] = vectorstore
-                session["num_chunks"] = num_chunks
-            st.success(f"RAG Ready — {num_chunks} chunks indexed")
-            
-    query = prompt.text
-    if query:
-        if session["title"] == "New Chat":
-            # Pass model_id to update_session_title for AI naming
-            llm_temp = ChatGroq(
-                model=model_id,
-                temperature=0.3,
-                api_key=os.environ.get("GROQ_API_KEY")
-            )
-            update_session_title(sid, query, llm=llm_temp)
-
-        session["chat"].append({"role": "user", "content": query})
-        st.markdown(f'<div class="user-message">{query}</div>', unsafe_allow_html=True)
-
-        with st.spinner("EduMind is thinking..."):
-            update_agent_status(agent_placeholder, active="Analyzer Agent")
-            time.sleep(0.3)
-
-            llm = ChatGroq(
-                model=model_id,
-                temperature=0.3,
-                api_key=os.environ.get("GROQ_API_KEY")
-            )
-
-            result = process_query(
-                query,
-                session.get("vectorstore"),
-                session["memory"],
-                llm
-            )
-
-            agents_used = result.get("agents_used", [])
-            update_agent_status(agent_placeholder, done=agents_used)
-
-        intent = result.get("intent", "")
-        final_html = ""
-
-        # Intent tag
-        if intent and intent not in ["GENERAL_CHAT", "NONE"]:
-            intent_colors = {"QUIZ": "#EEF2FF", "EVALUATE": "#ECFDF5", "EXPLAIN": "#FEF3C7", "GENERAL": "#F9FAFB"}
-            ic = intent_colors.get(intent, "#F9FAFB")
-            agents_str = " → ".join(agents_used) if agents_used else "None"
-            final_html += f"""<div style="background:{ic}; border-radius:5px; padding:3px 9px; margin-bottom:7px; font-size:0.65rem; color:#6B7280; font-weight:600;">Orchestrator: <b>{intent}</b> | {agents_str}</div>"""
-
-        if result.get("questions"):
-            final_html += f"""<div class="agent-output-box" style="border-left-color:#4338ca;"><div class="agent-output-label">Question Generator Agent</div><div style="white-space:pre-line; font-size:0.9rem;">{result['questions']}</div></div>"""
-
-        if result.get("answer"):
-            if agents_used and "Structure" in " ".join(agents_used):
-                label = "Structure & Polish Agent"
-                label_color = "#059669"
-            elif agents_used and "Summarizer" in " ".join(agents_used):
-                label = "Summarizer Agent"
-                label_color = "#059669"
-            else:
-                label = "EduMind AI"
-                label_color = "#4338ca"
-                
-            final_html += f"""<div class="agent-output-box" style="border-left-color:{label_color};"><div class="agent-output-label" style="color:{label_color};">{label}</div><div style="white-space:pre-line; font-size:0.9rem;">{result['answer']}</div></div>"""
-
-        if result.get("evaluation"):
-            final_html += f"""<div class="agent-output-box" style="border-left-color:#d97706;"><div class="agent-output-label" style="color:#d97706;">Evaluator Agent</div><div style="white-space:pre-line; font-size:0.9rem;">{result['evaluation']}</div></div>"""
-
-        st.markdown(f'<div class="ai-bubble"><div class="ai-icon">E</div><div class="ai-content">{final_html}</div></div>', unsafe_allow_html=True)
-        session["chat"].append({"role": "assistant", "content": final_html})
+    st.markdown(f'<div class="ai-bubble"><div class="ai-icon">E</div><div class="ai-content">{final_html}</div></div>', unsafe_allow_html=True)
+    current_session["chat"].append({"role": "assistant", "content": final_html})
+    st.rerun() # Rerun once at the very end to ensure sidebars see the new chat message and title
