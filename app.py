@@ -336,6 +336,11 @@ st.markdown("""
         padding-top: 10px !important;
         padding-bottom: 10px !important;
     }
+    /* HIDE STREAMLIT BRANDING */
+    header {visibility: hidden;}
+    footer {visibility: hidden;}
+    #MainMenu {visibility: hidden;}
+    [data-testid="stHeader"] {display: none;}
 </style>
 """, unsafe_allow_html=True)
 
