@@ -454,7 +454,7 @@ def update_agent_status(agent_placeholder, active=None, done=[]):
 # ============================================
 # 6. PROCESS QUERY & FILE (MOVED UP FOR INSTANT UI UPDATES)
 # ============================================
-prompt = st.chat_input("Message EduMind AI...", accept_file=True, file_type=["pdf", "docx"])
+prompt = st.chat_input("Message EduMind AI...", accept_file=True, file_type=["pdf", "docx", "txt"])
 
 if prompt:
     sid = st.session_state.current_session_id

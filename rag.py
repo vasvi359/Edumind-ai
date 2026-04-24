@@ -20,27 +20,37 @@ def get_embedding():
 
 def extract_text(uploaded_file):
     """
-    Extracts text from PDF or Word document.
+    Extracts text from PDF, Word, or TXT documents.
     Returns raw text string.
     """
     text = ""
+    file_name = uploaded_file.name.lower()
+    
     try:
-        if uploaded_file.name.endswith(".docx"):
+        if file_name.endswith(".docx"):
             doc = DocxDocument(uploaded_file)
             text = "\n".join([
                 p.text for p in doc.paragraphs
                 if p.text.strip()
             ])
 
-        elif uploaded_file.name.endswith(".pdf"):
+        elif file_name.endswith(".pdf"):
             pdf = PyPDF2.PdfReader(uploaded_file)
             for page in pdf.pages:
                 page_text = page.extract_text()
                 if page_text:
                     text += page_text + "\n"
+        
+        elif file_name.endswith(".txt"):
+            text = uploaded_file.getvalue().decode("utf-8", errors="ignore")
 
     except Exception as e:
-        print(f"Error extracting text: {e}")
+        import traceback
+        print(f"--- TEXT EXTRACTION ERROR ---")
+        traceback.print_exc()
+        print(f"-----------------------------")
+        # Return a message that can be shown in the UI
+        return f"ERROR: Could not read {uploaded_file.name}. Please ensure it is not password protected."
 
     return text
 
