@@ -96,7 +96,8 @@ class EduMindOrchestrator:
         # 3. QUIZ intent — student wants NEW questions
         if any(word in query_lower for word in [
             "question", "quiz", "exam", "generate questions",
-            "important questions", "prepare", "test me", "practice"
+            "important questions", "prepare", "test me", "practice",
+            "give me questions", "ask me something", "start quiz"
         ]):
             return "QUIZ"
 
@@ -242,7 +243,7 @@ class EduMindOrchestrator:
             self.memory.add_to_history("user", query)
             self.memory.add_to_history("assistant", questions)
 
-            result["questions"] = questions
+            result["questions"] = questions.strip()
             result["agents_used"] = agents_used
             return result
 
@@ -293,7 +294,7 @@ class EduMindOrchestrator:
             self.memory.add_to_history("user", query)
             self.memory.add_to_history("assistant", final_answer)
 
-            result["answer"] = final_answer
+            result["answer"] = final_answer.strip()
             result["agents_used"] = agents_used
             return result
 
@@ -346,7 +347,7 @@ class EduMindOrchestrator:
             self.memory.add_to_history("user", query)
             self.memory.add_to_history("assistant", final_answer)
 
-            result["answer"] = final_answer
+            result["answer"] = final_answer.strip()
             result["agents_used"] = agents_used
             return result
 
@@ -394,7 +395,7 @@ class EduMindOrchestrator:
         self.memory.add_to_history("user", query)
         self.memory.add_to_history("assistant", answer)
 
-        result["answer"] = answer
+        result["answer"] = answer.strip()
         result["agents_used"] = agents_used
         return result
 

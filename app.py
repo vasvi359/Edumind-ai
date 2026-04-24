@@ -292,6 +292,12 @@ st.markdown("""
         border-left: 3px solid var(--primary); border-radius: 10px;
         padding: 12px 16px; margin: 8px 0;
     }
+    .agent-output-box h1, .agent-output-box h2, .agent-output-box h3 {
+        margin: 5px 0 3px 0 !important; padding: 0 !important; line-height: 1.2 !important;
+        font-size: 1.1rem !important;
+    }
+    .agent-output-box p { margin-bottom: 6px !important; }
+    .agent-output-box ul, .agent-output-box ol { margin-top: 0 !important; margin-bottom: 8px !important; }
     .agent-output-label {
         font-size: 0.65rem; font-weight: 700; text-transform: uppercase;
         letter-spacing: 1px; color: var(--primary); margin-bottom: 8px;
