@@ -125,10 +125,13 @@ class EduMindOrchestrator:
         """
         return intent in ["EXPLAIN", "GENERAL"]
 
-    def route(self, query, context, llm):
+    def route(self, query, context, llm, status_callback=None):
         """
         Main routing function — decides which agents to call
         """
+        def report(agent, status="active"):
+            if status_callback:
+                status_callback(agent, status)
         import re
 
         intent = self.detect_intent(query)
@@ -148,6 +151,7 @@ class EduMindOrchestrator:
         # No agents, no RAG — just friendly conversation
         # ============================================
         if intent == "GENERAL_CHAT":
+            report("Analyzer Agent", "active")
             answer = llm.invoke(f"""
             You are EduMind AI, a friendly and helpful study assistant.
             Respond naturally and warmly to this message.
@@ -162,7 +166,7 @@ class EduMindOrchestrator:
 
             result["answer"] = answer
             result["intent"] = "GENERAL_CHAT"
-            result["agents_used"] = []
+            result["agents_used"] = ["Analyzer Agent"]
             return result
 
         # ============================================
@@ -171,7 +175,8 @@ class EduMindOrchestrator:
         # Orchestrator uses memory to find last questions
         # ============================================
         if intent == "EVALUATE":
-            agents_used.append("⭐ Evaluator Agent")
+            report("Evaluator Agent", "active")
+            agents_used.append("Evaluator Agent")
 
             # Use memory to get last quiz questions
             last_questions = self.memory.last_questions
@@ -210,14 +215,16 @@ class EduMindOrchestrator:
 
             # Skip analyzer for simple quiz requests
             if not self.should_skip_analyzer(query, intent):
-                agents_used.append("🔍 Analyzer Agent")
+                report("Analyzer Agent", "active")
+                agents_used.append("Analyzer Agent")
                 analyzer_agent(query, llm)
 
             # Extract question count from query
             count_match = re.search(r'(\d+)', query)
             count = int(count_match.group(1)) if count_match else 5
 
-            agents_used.append("❓ Question Generator")
+            report("Question Generator", "active")
+            agents_used.append("Question Generator")
             questions = question_generator_agent(
                 enriched_context,
                 llm,
@@ -245,7 +252,8 @@ class EduMindOrchestrator:
         if intent == "EXPLAIN":
 
             # Analyzer always runs for explanations
-            agents_used.append("🔍 Analyzer Agent")
+            report("Analyzer Agent", "active")
+            agents_used.append("Analyzer Agent")
             analyzer_agent(query, llm)
 
             # Store topic in memory
@@ -270,11 +278,14 @@ class EduMindOrchestrator:
             Focus on what will help in exams.
             """).content
 
-            if "summar" in query.lower() or "short" in query.lower():
-                agents_used.append("📝 Summarizer Agent")
+            summarize_keywords = ["summar", "short", "tldr", "condense", "brief", "summary", "gist"]
+            if any(k in query.lower() for k in summarize_keywords):
+                report("Summarizer Agent", "active")
+                agents_used.append("Summarizer Agent")
                 final_answer = summarizer_agent(answer, llm)
             else:
-                agents_used.append("📝 Structure & Polish Agent")
+                report("Structure & Polish Agent", "active")
+                agents_used.append("Structure & Polish Agent")
                 final_answer = structure_and_polish_agent(answer, llm)
 
             self.memory.add_to_history("user", query)
@@ -290,7 +301,8 @@ class EduMindOrchestrator:
         # Uses full memory history as primary context
         # ============================================
         if intent == "FOLLOWUP":
-            agents_used.append("🔍 Analyzer Agent")
+            report("Analyzer Agent", "active")
+            agents_used.append("Analyzer Agent")
 
             # Build rich context from memory + RAG
             memory_history = self.memory.get_recent_history(6)
@@ -318,11 +330,15 @@ class EduMindOrchestrator:
             provide clear, detailed answers to each of those questions.
             Use the conversation history to understand context.
             """).content
-            if "summar" in query.lower() or "short" in query.lower():
-                agents_used.append("📝 Summarizer Agent")
+
+            summarize_keywords = ["summar", "short", "tldr", "condense", "brief", "summary", "gist"]
+            if any(k in query.lower() for k in summarize_keywords):
+                report("Summarizer Agent", "active")
+                agents_used.append("Summarizer Agent")
                 final_answer = summarizer_agent(answer, llm)
             else:
-                agents_used.append("📝 Structure & Polish Agent")
+                report("Structure & Polish Agent", "active")
+                agents_used.append("Structure & Polish Agent")
                 final_answer = structure_and_polish_agent(answer, llm)
 
             self.memory.add_to_history("user", query)
@@ -339,7 +355,8 @@ class EduMindOrchestrator:
 
         # Only run analyzer for complex queries
         if not self.should_skip_analyzer(query, intent):
-            agents_used.append("🔍 Analyzer Agent")
+            report("Analyzer Agent", "active")
+            agents_used.append("Analyzer Agent")
             analyzer_agent(query, llm)
 
         # Use full memory history for context continuity
@@ -362,11 +379,14 @@ class EduMindOrchestrator:
 
         # Polisher or Summarizer for longer responses
         if self.should_use_summarizer(intent):
-            if "summar" in query.lower() or "short" in query.lower():
-                agents_used.append("📝 Summarizer Agent")
+            summarize_keywords = ["summar", "short", "tldr", "condense", "brief", "summary", "gist"]
+            if any(k in query.lower() for k in summarize_keywords):
+                report("Summarizer Agent", "active")
+                agents_used.append("Summarizer Agent")
                 answer = summarizer_agent(answer, llm)
             else:
-                agents_used.append("📝 Structure & Polish Agent")
+                report("Structure & Polish Agent", "active")
+                agents_used.append("Structure & Polish Agent")
                 answer = structure_and_polish_agent(answer, llm)
 
         self.memory.add_to_history("user", query)
@@ -381,7 +401,7 @@ class EduMindOrchestrator:
 # MAIN ENTRY POINT
 # Called from app.py
 # ============================================
-def process_query(query, vectorstore, memory, llm):
+def process_query(query, vectorstore, memory, llm, status_callback=None):
     # Check for general chat first — no vectorstore needed
     query_lower = query.lower().strip()
     is_general_chat = len(query.split()) <= 5 and any(word in query_lower for word in [
@@ -392,7 +412,7 @@ def process_query(query, vectorstore, memory, llm):
 
     if is_general_chat:
         orchestrator = EduMindOrchestrator(memory)
-        return orchestrator.route(query, "", llm)
+        return orchestrator.route(query, "", llm, status_callback=status_callback)
 
     if vectorstore is None:
         return {
@@ -406,4 +426,4 @@ def process_query(query, vectorstore, memory, llm):
 
     context = retrieve_context(query, vectorstore)
     orchestrator = EduMindOrchestrator(memory)
-    return orchestrator.route(query, context, llm)
+    return orchestrator.route(query, context, llm, status_callback=status_callback)

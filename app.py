@@ -608,10 +608,22 @@ if prompt and prompt.text:
     model_id_exec = AVAILABLE_MODELS[st.session_state.selected_model]
     query_exec = prompt.text
     
+    # Define callback to update agent status in real-time
+    def agent_status_callback(agent_name, status):
+        update_agent_status(agent_placeholder, active=agent_name)
+
     with st.spinner("EduMind is thinking..."):
-        update_agent_status(agent_placeholder, active="Analyzer Agent")
         llm = ChatGroq(model=model_id_exec, temperature=0.3, api_key=os.environ.get("GROQ_API_KEY"))
-        result = process_query(query_exec, current_session.get("vectorstore"), current_session["memory"], llm)
+        
+        # Pass the callback to the backend
+        result = process_query(
+            query_exec, 
+            current_session.get("vectorstore"), 
+            current_session["memory"], 
+            llm,
+            status_callback=agent_status_callback
+        )
+        
         agents_used = result.get("agents_used", [])
         update_agent_status(agent_placeholder, done=agents_used)
 
