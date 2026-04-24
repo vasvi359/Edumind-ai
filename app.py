@@ -1,4 +1,5 @@
 # app.py
+#sync test
 import streamlit as st
 from backend import process_query, EduMindMemory
 from langchain_groq import ChatGroq
