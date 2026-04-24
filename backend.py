@@ -77,7 +77,9 @@ class EduMindOrchestrator:
         if any(word in query_lower for word in [
             "my answer", "grade", "evaluate", "score me",
             "check my", "grade my", "here is my answer",
-            "my response", "assess", "evaluate those"
+            "my response", "assess", "evaluate those",
+            "am i right", "am i wrong", "is it correct",
+            "feedback", "how did i do", "score this"
         ]):
             return "EVALUATE"
 
