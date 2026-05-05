@@ -1,0 +1,22 @@
+[
+  {
+    "question": "What is the origin of the word photosynthesis?",
+    "ground_truth": "The word photosynthesis comes from the Greek words phōs (φῶς), meaning 'light', and sunthesis (σύνθεσις), meaning 'putting together'."
+  },
+  {
+    "question": "What are organisms called that perform photosynthesis?",
+    "ground_truth": "Organisms that perform photosynthesis, such as most plants, algae, and cyanobacteria, are called photoautotrophs."
+  },
+  {
+    "question": "Where are the proteins for light-dependent reactions held in plants?",
+    "ground_truth": "In plants, these proteins are held inside organelles called chloroplasts, which are most abundant in leaf cells."
+  },
+  {
+    "question": "What are the names of the two compounds that serve as short-term stores of energy created during the light-dependent reactions?",
+    "ground_truth": "The two compounds are reduced nicotinamide adenine dinucleotide phosphate (NADPH) and adenosine triphosphate (ATP)."
+  },
+  {
+    "question": "What happens during the Calvin cycle in plants, algae, and cyanobacteria?",
+    "ground_truth": "In the Calvin cycle, atmospheric carbon dioxide is incorporated into existing organic carbon compounds like ribulose bisphosphate (RuBP). Then, using ATP and NADPH produced by light-dependent reactions, these compounds are reduced and removed to form carbohydrates such as glucose."
+  }
+]

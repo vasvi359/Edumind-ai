@@ -277,6 +277,8 @@ class EduMindOrchestrator:
             Student Question: {query}
 
             Provide a clear, structured answer.
+            CRITICAL INSTRUCTION: You MUST answer STRICTLY using the provided Source Material.
+            Do not hallucinate or use outside knowledge. If the answer is not in the source material, say 'I cannot find the answer in the provided notes.'
             Use bullet points for key concepts.
             Focus on what will help in exams.
             """).content
@@ -329,8 +331,10 @@ class EduMindOrchestrator:
             Follow-up Query: {query}
 
             Answer this follow-up naturally and completely.
+            CRITICAL INSTRUCTION: You MUST answer STRICTLY using the provided Source Material.
+            Do not hallucinate or use outside knowledge. If the answer is not in the source material, say 'I cannot find the answer in the provided notes.'
             If the student is asking for answers to previously generated questions,
-            provide clear, detailed answers to each of those questions.
+            provide clear, detailed answers to each of those questions based ONLY on the source material.
             Use the conversation history to understand context.
             """).content
 
@@ -377,6 +381,8 @@ class EduMindOrchestrator:
         Question: {query}
 
         Answer clearly and concisely.
+        CRITICAL INSTRUCTION: You MUST answer STRICTLY using the provided Source Material.
+        Do not hallucinate or use outside knowledge. If the answer is not in the source material, say 'I cannot find the answer in the provided notes.'
         If this question refers to anything from the previous conversation, use that context.
         """).content
 

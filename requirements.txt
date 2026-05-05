@@ -11,3 +11,6 @@ chromadb==1.5.7
 sentence-transformers==5.4.1
 torchvision
 protobuf==4.25.3
+ragas
+pandas
+datasets
